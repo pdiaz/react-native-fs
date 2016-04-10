@@ -83,7 +83,7 @@ var RNFS = {
       })
       .catch(convertError);
   },
-  
+
   exists(filepath) {
     return _exists(filepath)
       .catch(convertError);
@@ -189,6 +189,8 @@ var RNFS = {
   MainBundlePath: RNFSManager.MainBundlePath,
   CachesDirectoryPath: RNFSManager.NSCachesDirectoryPath,
   DocumentDirectoryPath: RNFSManager.NSDocumentDirectoryPath,
+  MoviesDirectoryPath: RNFSManager.NSMoviesDirectoryPath,
+  MusicDirectoryPath: RNFSManager.NSMusicDirectoryPath,
   LibraryDirectoryPath: RNFSManager.NSLibraryDirectoryPath,
   PicturesDirectoryPath: RNFSManager.NSPicturesDirectoryPath
 };
