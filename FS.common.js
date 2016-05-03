@@ -189,6 +189,7 @@ var RNFS = {
   MainBundlePath: RNFSManager.MainBundlePath,
   CachesDirectoryPath: RNFSManager.NSCachesDirectoryPath,
   DocumentDirectoryPath: RNFSManager.NSDocumentDirectoryPath,
+  ExternalDirectoryPath: RNFSManager.NSExternalDirectoryPath,
   MoviesDirectoryPath: RNFSManager.NSMoviesDirectoryPath,
   MusicDirectoryPath: RNFSManager.NSMusicDirectoryPath,
   LibraryDirectoryPath: RNFSManager.NSLibraryDirectoryPath,
