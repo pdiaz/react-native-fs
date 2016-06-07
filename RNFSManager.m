@@ -10,11 +10,13 @@
 #import "RCTBridge.h"
 #import "NSArray+Map.h"
 #import "Downloader.h"
+#import "Uploader.h"
 #import "RCTEventDispatcher.h"
 
 @interface RNFSManager()
 
 @property (retain) NSMutableDictionary* downloaders;
+@property (retain) NSMutableDictionary* uploaders;
 
 @end
 
@@ -172,18 +174,20 @@ RCT_EXPORT_METHOD(moveFile:(NSString *)filepath
     callback(@[[NSNull null], [NSNumber numberWithBool:success], destPath]);
 }
 
-RCT_EXPORT_METHOD(downloadFile:(NSString *)urlStr
-                  filepath:(NSString *)filepath
-                  jobId:(nonnull NSNumber *)jobId
+RCT_EXPORT_METHOD(downloadFile:(NSDictionary *)options
                   callback:(RCTResponseSenderBlock)callback)
 {
-
   DownloadParams* params = [DownloadParams alloc];
 
-  params.fromUrl = urlStr;
-  params.toFile = filepath;
+  NSNumber* jobId = options[@"jobId"];
+  params.fromUrl = options[@"fromUrl"];
+  params.toFile = options[@"toFile"];
+  NSDictionary* headers = options[@"headers"];
+  params.headers = headers;
+  NSNumber* background = options[@"background"];
+  params.background = [background boolValue];
 
-  params.callback = ^(NSNumber* statusCode, NSNumber* bytesWritten) {
+  params.completeCallback = ^(NSNumber* statusCode, NSNumber* bytesWritten) {
     NSMutableDictionary* result = [[NSMutableDictionary alloc] initWithDictionary: @{@"jobId": jobId,
                              @"statusCode": statusCode}];
     if (bytesWritten) {
@@ -229,6 +233,60 @@ RCT_EXPORT_METHOD(stopDownload:(nonnull NSNumber *)jobId)
   }
 }
 
+RCT_EXPORT_METHOD(uploadFiles:(NSDictionary *)options
+                  callback:(RCTResponseSenderBlock)callback)
+{
+  UploadParams* params = [UploadParams alloc];
+
+  NSNumber* jobId = options[@"jobId"];
+  params.toUrl = options[@"toUrl"];
+  params.files = options[@"files"];
+  NSDictionary* headers = options[@"headers"];
+  NSDictionary* fields = options[@"fields"];
+  NSString* method = options[@"method"];
+  params.headers = headers;
+  params.fields = fields;
+  params.method = method;
+
+  params.completeCallback = ^(NSString* response) {
+    NSMutableDictionary* result = [[NSMutableDictionary alloc] initWithDictionary: @{@"jobId": jobId,
+                             @"response": response}];
+    return callback(@[[NSNull null], result]);
+  };
+
+  params.errorCallback = ^(NSError* error) {
+    return callback([self makeErrorPayload:error]);
+  };
+
+  params.beginCallback = ^() {
+    [self.bridge.eventDispatcher sendAppEventWithName:[NSString stringWithFormat:@"UploadBegin-%@", jobId]
+                                                 body:@{@"jobId": jobId}];
+  };
+
+  params.progressCallback = ^(NSNumber* totalBytesExpectedToSend, NSNumber* totalBytesSent) {
+    [self.bridge.eventDispatcher sendAppEventWithName:[NSString stringWithFormat:@"UploadProgress-%@", jobId]
+                                                 body:@{@"totalBytesExpectedToSend": totalBytesExpectedToSend,
+                                                        @"totalBytesSent": totalBytesSent}];
+  };
+
+  if (!self.uploaders) self.uploaders = [[NSMutableDictionary alloc] init];
+
+  Uploader* uploader = [Uploader alloc];
+
+  [uploader uploadFiles:params];
+
+  [self.uploaders setValue:uploader forKey:[jobId stringValue]];
+}
+
+RCT_EXPORT_METHOD(stopUpload:(nonnull NSNumber *)jobId)
+{
+  Uploader* uploader = [self.uploaders objectForKey:[jobId stringValue]];
+
+  if (uploader != nil) {
+    [uploader stopUpload];
+  }
+}
+
 RCT_EXPORT_METHOD(pathForBundle:(NSString *)bundleNamed
                   callback:(RCTResponseSenderBlock)callback)
 {
@@ -251,6 +309,32 @@ RCT_EXPORT_METHOD(pathForBundle:(NSString *)bundleNamed
                                        code:NSFileNoSuchFileError
                                    userInfo:nil].localizedDescription,
                    [NSNull null]]);
+    }
+}
+
+RCT_EXPORT_METHOD(getFSInfo:(RCTResponseSenderBlock)callback)
+{
+    unsigned long long totalSpace = 0;
+    unsigned long long totalFreeSpace = 0;
+
+    __autoreleasing NSError *error = nil;
+    NSArray *paths = NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, YES);
+    NSDictionary *dictionary = [[NSFileManager defaultManager] attributesOfFileSystemForPath:[paths lastObject] error: &error];
+
+    if (dictionary) {
+        NSNumber *fileSystemSizeInBytes = [dictionary objectForKey: NSFileSystemSize];
+        NSNumber *freeFileSystemSizeInBytes = [dictionary objectForKey:NSFileSystemFreeSize];
+        totalSpace = [fileSystemSizeInBytes unsignedLongLongValue];
+        totalFreeSpace = [freeFileSystemSizeInBytes unsignedLongLongValue];
+
+        callback(@[[NSNull null],
+                   @{
+                       @"totalSpace": [NSNumber numberWithUnsignedLongLong:totalSpace],
+                       @"freeSpace": [NSNumber numberWithUnsignedLongLong:totalFreeSpace]
+                       }
+                   ]);
+    } else {
+        callback(@[error, [NSNull null]]);
     }
 }
 
@@ -283,6 +367,7 @@ RCT_EXPORT_METHOD(pathForBundle:(NSString *)bundleNamed
     @"NSPicturesDirectoryPath": [self getPathForDirectory:NSPicturesDirectory],
     @"NSMoviesDirectoryPath": [self getPathForDirectory:NSMoviesDirectory],
     @"NSMusicDirectoryPath": [self getPathForDirectory:NSMusicDirectory],
+    @"NSTemporaryDirectoryPath": NSTemporaryDirectory(),
     @"NSLibraryDirectoryPath": [self getPathForDirectory:NSLibraryDirectory],
     @"NSFileTypeRegular": NSFileTypeRegular,
     @"NSFileTypeDirectory": NSFileTypeDirectory
