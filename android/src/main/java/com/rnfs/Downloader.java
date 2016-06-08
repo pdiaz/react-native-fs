@@ -43,6 +43,10 @@ public class Downloader extends AsyncTask<DownloadParams, int[], DownloadResult>
     OutputStream output = null;
     HttpURLConnection connection = null;
 
+    if (mAbort.get()) {
+      return;
+    }
+
     try {
       connection = (HttpURLConnection)param.src.openConnection();
 
@@ -54,8 +58,16 @@ public class Downloader extends AsyncTask<DownloadParams, int[], DownloadResult>
         connection.setRequestProperty(key, value);
       }
 
+      if (mAbort.get()) {
+        return;
+      }
+
       connection.setConnectTimeout(5000);
       connection.connect();
+
+      if (mAbort.get()) {
+        return;
+      }
 
       int statusCode = connection.getResponseCode();
       int lengthOfFile = connection.getContentLength();
@@ -133,7 +145,7 @@ public class Downloader extends AsyncTask<DownloadParams, int[], DownloadResult>
   protected void onProgressUpdate(int[]... values) {
     super.onProgressUpdate(values);
     if (values[0][1] > 0) {
-      int p = 1000 * values[0][0] / values[0][1];
+      int p = 500 * values[0][0] / values[0][1];
       if (progressNotified != p) {
         progressNotified = p;
         mParam.onDownloadProgress.onDownloadProgress(values[0][0], values[0][1]);
