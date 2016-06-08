@@ -127,10 +127,18 @@ public class Downloader extends AsyncTask<DownloadParams, int[], DownloadResult>
     mAbort.set(true);
   }
 
+  int progressNotified = 0;
+
   @Override
   protected void onProgressUpdate(int[]... values) {
     super.onProgressUpdate(values);
-    mParam.onDownloadProgress.onDownloadProgress(values[0][0], values[0][1]);
+    if (values[0][1] > 0) {
+      int p = 1000 * values[0][0] / values[0][1];
+      if (progressNotified != p) {
+        progressNotified = p;
+        mParam.onDownloadProgress.onDownloadProgress(values[0][0], values[0][1]);
+      }
+    }
   }
 
   protected void onPostExecute(Exception ex) {
