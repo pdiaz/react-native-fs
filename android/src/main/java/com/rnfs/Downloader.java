@@ -123,7 +123,7 @@ public class Downloader extends AsyncTask<DownloadParams, int[], DownloadResult>
         }
 
         total += count;
-        if (param.progressDivider <= 1) {
+        if (param.progressDivider < 1) {
             publishProgress(new int[]{lengthOfFile, total});
         } else {
             double progress = Math.round(((double) total * 100) / lengthOfFile);
