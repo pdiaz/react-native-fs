@@ -97,6 +97,9 @@
     NSLog(@"RNFS download: unable to move tempfile to destination. %@, %@", error, error.userInfo);
   }
 
+  NSDictionary *attributes = [[NSFileManager defaultManager] attributesOfItemAtURL:destURL error:&error];
+  _bytesWritten = [attributes objectForKey:NSFileSize];
+
   return _params.completeCallback(_statusCode, _bytesWritten);
 }
 
