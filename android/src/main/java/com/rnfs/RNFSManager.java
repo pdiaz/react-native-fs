@@ -2,6 +2,7 @@ package com.rnfs;
 
 import android.content.res.AssetFileDescriptor;
 import android.content.res.AssetManager;
+import android.os.AsyncTask;
 import android.os.Environment;
 import android.os.StatFs;
 import android.support.annotation.Nullable;
