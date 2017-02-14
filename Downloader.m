@@ -1,12 +1,12 @@
 #import "Downloader.h"
 
-@implementation DownloadParams
+@implementation RNFSDownloadParams
 
 @end
 
-@interface Downloader()
+@interface RNFSDownloader()
 
-@property (copy) DownloadParams* params;
+@property (copy) RNFSDownloadParams* params;
 
 @property (retain) NSURLSession* session;
 @property (retain) NSURLSessionTask* task;
@@ -19,9 +19,9 @@
 
 @end
 
-@implementation Downloader
+@implementation RNFSDownloader
 
-- (void)downloadFile:(DownloadParams*)params
+- (void)downloadFile:(RNFSDownloadParams*)params
 {
   _params = params;
 
@@ -68,7 +68,7 @@
   if ([_statusCode isEqualToNumber:[NSNumber numberWithInt:200]]) {
     _bytesWritten = @(totalBytesWritten);
 
-    if (_params.progressDivider < 1) {
+    if (_params.progressDivider.integerValue <= 0) {
       return _params.progressCallback(_contentLength, _bytesWritten);
     } else {
       double doubleBytesWritten = (double)[_bytesWritten longValue];
@@ -97,21 +97,27 @@
     NSLog(@"RNFS download: unable to move tempfile to destination. %@, %@", error, error.userInfo);
   }
 
-  NSDictionary *attributes = [[NSFileManager defaultManager] attributesOfItemAtPath:_params.toFile error:&error];
-  _bytesWritten = [attributes objectForKey:NSFileSize];
-
   return _params.completeCallback(_statusCode, _bytesWritten);
 }
 
-- (void)URLSession:(NSURLSession *)session downloadTask:(NSURLSessionTask *)downloadTask didCompleteWithError:(NSError *)error
+- (void)URLSession:(NSURLSession *)session task:(NSURLSessionTask *)task didCompleteWithError:(NSError *)error
 {
-  return _params.errorCallback(error);
+  return error ? _params.errorCallback(error) : nil;
 }
-
 
 - (void)stopDownload
 {
-  [_task cancel];
+  if (_task.state == NSURLSessionTaskStateRunning) {
+    [_task cancel];
+
+    NSError *error = [NSError errorWithDomain:@"RNFS"
+                                         code:@"Aborted"
+                                     userInfo:@{
+                                       NSLocalizedDescriptionKey: @"Download has been aborted"
+                                     }];
+
+    return _params.errorCallback(error);
+  }
 }
 
 @end
