@@ -45,9 +45,7 @@ public class Downloader extends AsyncTask<DownloadParams, int[], DownloadResult>
     OutputStream output = null;
     HttpURLConnection connection = null;
 
-    if (mAbort.get()) {
-      return;
-    }
+    if (mAbort.get()) throw new Exception("Download has been aborted");
 
     try {
       connection = (HttpURLConnection)param.src.openConnection();
@@ -60,17 +58,13 @@ public class Downloader extends AsyncTask<DownloadParams, int[], DownloadResult>
         connection.setRequestProperty(key, value);
       }
 
-      if (mAbort.get()) {
-        return;
-      }
+      if (mAbort.get()) throw new Exception("Download has been aborted");
 
       connection.setConnectTimeout(5000);
       connection.setReadTimeout(15000);
       connection.connect();
 
-      if (mAbort.get()) {
-        return;
-      }
+      if (mAbort.get()) throw new Exception("Download has been aborted");
 
       int statusCode = connection.getResponseCode();
       int lengthOfFile = connection.getContentLength();
