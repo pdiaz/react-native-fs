@@ -102,7 +102,10 @@
 
 - (void)URLSession:(NSURLSession *)session task:(NSURLSessionTask *)task didCompleteWithError:(NSError *)error
 {
-  return error ? _params.errorCallback(error) : nil;
+  if (error && _params.errorCallback) {
+    _params.errorCallback(error);
+    _params.errorCallback = nil;
+  }
 }
 
 - (void)stopDownload
@@ -115,8 +118,9 @@
                                      userInfo:@{
                                        NSLocalizedDescriptionKey: @"Download has been aborted"
                                      }];
-
-    return _params.errorCallback(error);
+    ErrorCallback errorCallback = _params.errorCallback;
+    _params.errorCallback = nil;
+    return errorCallback(error);
   }
 }
 
